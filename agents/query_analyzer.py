@@ -19,7 +19,7 @@ class QueryAnalyzer(BaseAgent):
         prompt = PROMPT_TEMPLATE.format(query=context.original_query)
 
         response = client.models.generate_content(
-            model="models/gemini-2.5-flash",
+            model="models/gemini-2.5-flash-lite",
             contents=prompt
         )
 

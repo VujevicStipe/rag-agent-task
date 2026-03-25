@@ -64,7 +64,7 @@ class ResponseGenerator(BaseAgent):
         prompt += "\n\n" + UNINTERPRETABLE
 
         response = client.models.generate_content(
-            model="models/gemini-2.5-flash",
+            model="models/gemini-2.5-flash-lite",
             contents=prompt
         )
 

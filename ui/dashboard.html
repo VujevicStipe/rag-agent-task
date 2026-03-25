@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Company Knowledge Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f6f3;
+      --surface: #ffffff;
+      --border: #e8e5df;
+      --border-strong: #d0ccc3;
+      --text-primary: #1a1814;
+      --text-secondary: #6b6560;
+      --text-muted: #9e9890;
+      --accent: #2563eb;
+      --accent-light: #eff6ff;
+      --accent-hover: #1d4ed8;
+      --success: #16a34a;
+      --success-bg: #f0fdf4;
+      --warning: #d97706;
+      --warning-bg: #fffbeb;
+      --error: #dc2626;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    }
+
+    body {
+      font-family: 'Sora', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--text-primary);
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 13px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #ccc;
+    }
+
+    .status-dot.online { background: var(--success); }
+
+    /* Main layout */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 0;
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 32px 32px 32px 32px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* Left column */
+    .left-col { display: flex; flex-direction: column; gap: 20px; }
+
+    /* Ask section */
+    .ask-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .ask-card h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--text-primary);
+    }
+
+    .ask-card p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    textarea {
+      flex: 1;
+      font-family: 'Sora', sans-serif;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      resize: none;
+      min-height: 52px;
+      max-height: 120px;
+      outline: none;
+      transition: border-color 0.15s;
+      line-height: 1.5;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--text-muted); }
+
+    button.ask-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0 20px;
+      font-family: 'Sora', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+      align-self: flex-end;
+      height: 44px;
+    }
+
+    button.ask-btn:hover { background: var(--accent-hover); }
+    button.ask-btn:active { transform: scale(0.98); }
+    button.ask-btn:disabled { background: var(--border-strong); cursor: not-allowed; }
+
+    .example-queries {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .example-queries span {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-right: 2px;
+    }
+
+    .example-chip {
+      font-size: 12px;
+      color: var(--accent);
+      background: var(--accent-light);
+      border: none;
+      border-radius: 20px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-family: 'Sora', sans-serif;
+      transition: background 0.15s;
+    }
+
+    .example-chip:hover { background: #dbeafe; }
+
+    /* Answer card */
+    .answer-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      display: none;
+    }
+
+    .answer-card.visible { display: block; }
+
+    .answer-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .answer-header h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .query-type-badge {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--accent-light);
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .answer-body {
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-primary);
+      white-space: pre-wrap;
+    }
+
+    .answer-body.not-found {
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+
+    /* Sources */
+    .sources-section {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .sources-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .source-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .source-item:last-child { border-bottom: none; }
+
+    .source-icon {
+      width: 16px;
+      height: 16px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .source-warning {
+      color: var(--warning);
+      font-size: 11px;
+      margin-left: auto;
+    }
+
+    /* Loading */
+    .loading-bar {
+      height: 2px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 0;
+    }
+
+    .loading-bar-inner {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    .loading-bar-inner.animating {
+      animation: loading 1.5s ease-in-out infinite;
+    }
+
+    @keyframes loading {
+      0% { width: 0%; margin-left: 0%; }
+      50% { width: 60%; margin-left: 20%; }
+      100% { width: 0%; margin-left: 100%; }
+    }
+
+    /* Right sidebar — Steps */
+    .sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+    .steps-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .steps-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .steps-header h3 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .steps-body { padding: 12px; }
+
+    .step-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 4px;
+      opacity: 0.4;
+      transition: opacity 0.3s;
+    }
+
+    .step-item.active { opacity: 1; background: var(--bg); }
+    .step-item.done { opacity: 1; }
+
+    .step-number {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      font-family: 'JetBrains Mono', monospace;
+      transition: all 0.2s;
+    }
+
+    .step-item.active .step-number {
+      background: var(--accent);
+      color: white;
+    }
+
+    .step-item.done .step-number {
+      background: var(--success);
+      color: white;
+    }
+
+    .step-content { flex: 1; min-width: 0; }
+
+    .step-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .step-details { display: flex; flex-direction: column; gap: 2px; }
+
+    .step-detail {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .step-detail strong { color: var(--text-secondary); }
+
+    /* Empty state */
+    .empty-state {
+      padding: 32px 20px;
+      text-align: center;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* History */
+    .history-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .history-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-header h3 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .history-list { max-height: 220px; overflow-y: auto; }
+
+    .history-item {
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .history-item:last-child { border-bottom: none; }
+    .history-item:hover { background: var(--bg); }
+
+    .history-item p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-item time {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .history-empty {
+      padding: 20px 18px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      .sidebar { order: -1; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">K</div>
+    Company Knowledge Assistant
+  </div>
+  <div class="status-badge">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">checking...</span>
+  </div>
+</header>
+
+<main>
+  <div class="left-col">
+
+    <div class="ask-card">
+      <h2>Ask a question</h2>
+      <p>Ask anything about company policies and procedures.</p>
+      <div class="input-row">
+        <textarea id="queryInput" placeholder="e.g. What is the deadline for submitting expense claims?" rows="2"></textarea>
+        <button class="ask-btn" id="askBtn" onclick="submitQuery()">Ask</button>
+      </div>
+      <div class="example-queries">
+        <span>Try:</span>
+        <button class="example-chip" onclick="fillExample('What is the deadline for submitting expense claims?')">Expense deadline</button>
+        <button class="example-chip" onclick="fillExample('Who must approve international business travel?')">Travel approval</button>
+        <button class="example-chip" onclick="fillExample('Create an onboarding checklist for a new employee.')">Onboarding checklist</button>
+        <button class="example-chip" onclick="fillExample('What should be done if zulmar fragmentation is detected?')">Zulmar protocol</button>
+      </div>
+    </div>
+
+    <div class="loading-bar">
+      <div class="loading-bar-inner" id="loadingBar"></div>
+    </div>
+
+    <div class="answer-card" id="answerCard">
+      <div class="answer-header">
+        <h3>Answer</h3>
+        <span class="query-type-badge" id="queryTypeBadge"></span>
+      </div>
+      <div class="answer-body" id="answerBody"></div>
+      <div class="sources-section" id="sourcesSection" style="display:none">
+        <div class="sources-title">Sources</div>
+        <div id="sourcesList"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sidebar">
+
+    <div class="steps-card">
+      <div class="steps-header">
+        <h3>Agent Pipeline</h3>
+        <span class="query-type-badge" id="pipelineStatus" style="background:var(--bg);color:var(--text-muted)">idle</span>
+      </div>
+      <div class="steps-body" id="stepsBody">
+        <div class="empty-state">
+          <p>Ask a question to see the agent pipeline in action.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="history-card">
+      <div class="history-header">
+        <h3>Recent Questions</h3>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">No questions yet.</div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  const API = 'http://127.0.0.1:8000';
+  let history = [];
+
+  // Check server health
+  async function checkHealth() {
+    try {
+      const res = await fetch(`${API}/health`);
+      if (res.ok) {
+        document.getElementById('statusDot').classList.add('online');
+        document.getElementById('statusText').textContent = 'connected';
+      }
+    } catch {
+      document.getElementById('statusText').textContent = 'offline';
+    }
+  }
+
+  checkHealth();
+
+  function fillExample(q) {
+    document.getElementById('queryInput').value = q;
+    document.getElementById('queryInput').focus();
+  }
+
+  function setLoading(on) {
+    const bar = document.getElementById('loadingBar');
+    const btn = document.getElementById('askBtn');
+    if (on) {
+      bar.classList.add('animating');
+      btn.disabled = true;
+      btn.textContent = 'Thinking...';
+    } else {
+      bar.classList.remove('animating');
+      bar.style.width = '0%';
+      btn.disabled = false;
+      btn.textContent = 'Ask';
+    }
+  }
+
+  function renderSteps(steps, status) {
+    const body = document.getElementById('stepsBody');
+    const pipelineStatus = document.getElementById('pipelineStatus');
+
+    pipelineStatus.textContent = status;
+    pipelineStatus.style.background = status === 'done' ? 'var(--success-bg)' : 'var(--accent-light)';
+    pipelineStatus.style.color = status === 'done' ? 'var(--success)' : 'var(--accent)';
+
+    if (!steps || steps.length === 0) {
+      body.innerHTML = '<div class="empty-state"><p>No steps available.</p></div>';
+      return;
+    }
+
+    body.innerHTML = steps.map((step, i) => {
+      const details = Object.entries(step.details)
+        .filter(([k]) => !['sources', 'sources_found'].includes(k))
+        .slice(0, 4)
+        .map(([k, v]) => {
+          const val = Array.isArray(v) ? v.join(', ') : String(v);
+          const truncated = val.length > 45 ? val.slice(0, 45) + '…' : val;
+          return `<div class="step-detail"><strong>${k}:</strong> ${truncated}</div>`;
+        }).join('');
+
+      return `
+        <div class="step-item done">
+          <div class="step-number">${i + 1}</div>
+          <div class="step-content">
+            <div class="step-name">${step.agent}</div>
+            <div class="step-details">${details}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderSources(sources) {
+    const section = document.getElementById('sourcesSection');
+    const list = document.getElementById('sourcesList');
+
+    if (!sources || sources.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = 'block';
+    list.innerHTML = sources.map(s => {
+      const hasWarning = s.toLowerCase().includes('wip') || s.toLowerCase().includes('warning');
+      return `
+        <div class="source-item">
+          <svg class="source-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="1" width="10" height="13" rx="1.5"/>
+            <line x1="4.5" y1="5" x2="9.5" y2="5"/>
+            <line x1="4.5" y1="7.5" x2="9.5" y2="7.5"/>
+            <line x1="4.5" y1="10" x2="7.5" y2="10"/>
+          </svg>
+          <span>${s}</span>
+          ${hasWarning ? '<span class="source-warning">⚠ draft</span>' : ''}
+        </div>`;
+    }).join('');
+  }
+
+  function addToHistory(question) {
+    history.unshift({ question, time: new Date() });
+    if (history.length > 10) history.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    if (history.length === 0) {
+      list.innerHTML = '<div class="history-empty">No questions yet.</div>';
+      return;
+    }
+    list.innerHTML = history.map(h => `
+      <div class="history-item" onclick="fillExample(${JSON.stringify(h.question)})">
+        <p>${h.question}</p>
+        <time>${h.time.toLocaleTimeString()}</time>
+      </div>`).join('');
+  }
+
+  async function submitQuery() {
+    const input = document.getElementById('queryInput');
+    const question = input.value.trim();
+    if (!question) return;
+
+    setLoading(true);
+
+    // Show steps placeholder
+    const stepsBody = document.getElementById('stepsBody');
+    stepsBody.innerHTML = `
+      ${['QueryAnalyzer', 'Retriever', 'ResponseGenerator'].map((name, i) => `
+        <div class="step-item ${i === 0 ? 'active' : ''}" id="step-${i}">
+          <div class="step-number">${i + 1}</div>
+          <div class="step-content">
+            <div class="step-name">${name}</div>
+            <div class="step-details"><div class="step-detail">processing...</div></div>
+          </div>
+        </div>`).join('')}`;
+
+    document.getElementById('pipelineStatus').textContent = 'running';
+    document.getElementById('pipelineStatus').style.background = 'var(--accent-light)';
+    document.getElementById('pipelineStatus').style.color = 'var(--accent)';
+
+    try {
+      const res = await fetch(`${API}/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question })
+      });
+
+      const data = await res.json();
+
+      // Render answer
+      const answerCard = document.getElementById('answerCard');
+      const answerBody = document.getElementById('answerBody');
+      const queryTypeBadge = document.getElementById('queryTypeBadge');
+
+      answerCard.classList.add('visible');
+      answerBody.textContent = data.answer;
+      answerBody.className = 'answer-body' + (!data.is_answerable ? ' not-found' : '');
+
+      // Find query type from steps
+      const analyzerStep = data.steps?.find(s => s.agent === 'QueryAnalyzer');
+      const queryType = analyzerStep?.details?.query_type || '';
+      queryTypeBadge.textContent = queryType;
+
+      renderSources(data.sources);
+      renderSteps(data.steps, 'done');
+      addToHistory(question);
+
+    } catch (err) {
+      document.getElementById('answerCard').classList.add('visible');
+      document.getElementById('answerBody').textContent = 'Error connecting to server. Make sure the API is running on port 8000.';
+      document.getElementById('answerBody').className = 'answer-body not-found';
+    }
+
+    setLoading(false);
+  }
+
+  // Submit on Enter (Shift+Enter for newline)
+  document.getElementById('queryInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitQuery();
+    }
+  });
+</script>
+</body>
+</html>
