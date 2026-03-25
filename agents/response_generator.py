@@ -1,4 +1,6 @@
 import os
+import yaml
+from pathlib import Path
 from google import genai
 from dotenv import load_dotenv
 from agents.base import BaseAgent
@@ -8,49 +10,14 @@ load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-NOT_FOUND_MESSAGE = """I was unable to find relevant information in the company documents to answer this question.
+config = yaml.safe_load(Path("config/retrieval.yaml").read_text(encoding="utf-8"))
+support_email = config.get("support_email", "support@company.com")
 
-If you believe this information should be available, please check with your manager or HR directly."""
-
-FACTUAL_PROMPT = """You are a company document assistant. Answer the question based ONLY on the provided document excerpts.
-Do not use any external knowledge. If the excerpts do not contain enough information, say so clearly.
-
-Document excerpts:
-{context}
-
-Question: {query}
-
-Provide a clear, concise answer based only on the documents above."""
-
-PROCEDURAL_PROMPT = """You are a company document assistant. The user needs step-by-step guidance or a checklist.
-Based ONLY on the provided document excerpts, create a clear checklist or step-by-step guide.
-Do not use any external knowledge.
-
-Be concise and focused. Highlight only the most critical steps directly relevant to the question. 
-Avoid listing every possible detail from the document. Aim for clarity over completeness.
-If the user explicitly asks for details, a comprehensive list, or all steps — then provide the full list.
-
-Document excerpts:
-{context}
-
-Request: {query}
-
-Format your response as a checklist with checkboxes (□) or numbered steps."""
-
-SUMMARIZATION_PROMPT = """You are a company document assistant. Summarize the provided document excerpts.
-Base your summary ONLY on the provided content. Do not add external knowledge.
-
-Document excerpts:
-{context}
-
-Request: {query}
-
-If the document content is not interpretable, meaningful, or consists only of symbols or random words,
-respond with a brief, user-friendly message stating that the document exists but cannot be summarized.
-Suggest the user contact their manager or reach out via email at support@company.com if they believe
-this document should contain meaningful content.
-
-Otherwise, provide a structured summary of the document content."""
+NOT_FOUND_MESSAGE = Path("config/prompts/not_found.txt").read_text(encoding="utf-8")
+FACTUAL_PROMPT = Path("config/prompts/response_factual.txt").read_text(encoding="utf-8")
+PROCEDURAL_PROMPT = Path("config/prompts/response_procedural.txt").read_text(encoding="utf-8")
+SUMMARIZATION_PROMPT = Path("config/prompts/response_summarization.txt").read_text(encoding="utf-8")
+UNINTERPRETABLE = Path("config/prompts/uninterpretable_content.txt").read_text(encoding="utf-8").format(support_email=support_email)
 
 
 def build_context(chunks: list[dict], registry: dict) -> str:
@@ -94,8 +61,10 @@ class ResponseGenerator(BaseAgent):
         else:
             prompt = FACTUAL_PROMPT.format(context=doc_context, query=query)
 
+        prompt += "\n\n" + UNINTERPRETABLE
+
         response = client.models.generate_content(
-            model="models/gemini-2.5-flash-lite",
+            model="models/gemini-2.5-flash",
             contents=prompt
         )
 

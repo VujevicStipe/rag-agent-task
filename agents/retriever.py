@@ -1,6 +1,8 @@
 import os
 import json
+import yaml
 import chromadb
+from pathlib import Path
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -11,11 +13,12 @@ load_dotenv()
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-SIMILARITY_THRESHOLD = 0.7
-TOP_K = 5
-SOURCE_MARGIN = 0.1
-REGISTRY_PATH = "data/registry.json"
-CHROMA_PATH = "chroma_db"
+config = yaml.safe_load(Path("config/retrieval.yaml").read_text(encoding="utf-8"))
+SIMILARITY_THRESHOLD = config["similarity_threshold"]
+TOP_K = config["top_k"]
+SOURCE_MARGIN = config["source_margin"]
+REGISTRY_PATH = config["registry_path"]
+CHROMA_PATH = config["chroma_path"]
 
 
 def load_registry() -> dict:
@@ -95,7 +98,6 @@ class Retriever(BaseAgent):
             context.retrieved_chunks = []
             context.sources = []
         else:
-            # filtriraj chunkove ispod thresholda
             filtered_chunks = [
                 c for c in deduped_chunks
                 if c["similarity"] >= SIMILARITY_THRESHOLD

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from google import genai
 from dotenv import load_dotenv
 from agents.base import BaseAgent
@@ -9,29 +10,7 @@ load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 QUERY_TYPES = ["FACTUAL", "PROCEDURAL", "SUMMARIZATION"]
-
-PROMPT_TEMPLATE = """You are a query analyzer for a company document assistant.
-
-Given the user's question, you must:
-1. Standardize the question (fix typos, make it formal and clear)
-2. Classify the query type as one of: FACTUAL, PROCEDURAL, SUMMARIZATION
-3. Extract key search terms
-
-Definitions:
-- FACTUAL: User wants a specific fact or piece of information 
-  (e.g. deadlines, rules, who is responsible, yes/no questions, "what is", "who must")
-- PROCEDURAL: User wants steps, a process, or a checklist 
-  (e.g. "how to", "create a checklist", "what should happen", "what are the steps", 
-  "what needs to be done", "what should be done", "what happens when")
-- SUMMARIZATION: User wants a summary of a document or section
-  (e.g. "summarize", "what does X document say", "overview of")
-
-Respond ONLY in this exact format:
-STANDARDIZED: <standardized question>
-TYPE: <FACTUAL|PROCEDURAL|SUMMARIZATION>
-TERMS: <comma separated key terms>
-
-User question: {query}"""
+PROMPT_TEMPLATE = Path("config/prompts/query_analyzer.txt").read_text(encoding="utf-8")
 
 
 class QueryAnalyzer(BaseAgent):
@@ -40,7 +19,7 @@ class QueryAnalyzer(BaseAgent):
         prompt = PROMPT_TEMPLATE.format(query=context.original_query)
 
         response = client.models.generate_content(
-            model="models/gemini-2.5-flash-lite",
+            model="models/gemini-2.5-flash",
             contents=prompt
         )
 

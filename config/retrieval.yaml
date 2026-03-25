@@ -1,0 +1,6 @@
+similarity_threshold: 0.7
+top_k: 7
+source_margin: 0.1
+chroma_path: chroma_db
+registry_path: data/registry.json
+support_email: support@company.com
