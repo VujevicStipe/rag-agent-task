@@ -85,12 +85,13 @@ A web interface for interacting with the system. It shows the agent pipeline in 
 | Component | Technology |
 |---|---|
 | Embeddings | `gemini-embedding-001` |
-| LLM | `gemini-2.5-flash` |
+| LLM | `gemini-2.5-flash` / `gemini-2.5-flash-lite` |
 | Vector store | ChromaDB (local) |
 | Backend | FastAPI |
 | UI | Vanilla HTML/CSS/JS |
 
 The same embedding model is used during both ingestion and querying. Using different models would create inconsistent vector spaces and break similarity search.
+The model can be switched between `gemini-2.5-flash` and `gemini-2.5-flash-lite` in `query_analyzer.py` and `response_generator.py` depending on speed and free quota needs.
 
 ---
 
@@ -116,6 +117,8 @@ This project uses the Google Gemini API for both embeddings and text generation.
 2. Sign in with a Google account
 3. Click "Get API key" and create a new project
 4. Copy the key and add it to your `.env` file
+
+Note: The free tier allows 20 requests per day per model per project. If you hit the limit, create a new project in Google AI Studio to get a fresh quota, or wait until midnight Pacific Time for it to reset.
 
 ```bash
 python -m venv venv
