@@ -26,29 +26,6 @@ def load_registry() -> dict:
         return json.load(f)
 
 
-def deduplicate_chunks(chunks: list[dict], registry: dict) -> list[dict]:
-    seen_hashes = {}
-    unique = []
-
-    for chunk in chunks:
-        content = chunk["document"]
-        content_hash = hash(content)
-        filename = chunk["metadata"]["filename"]
-        has_warning = registry.get(filename, {}).get("warning") is not None
-
-        if content_hash not in seen_hashes:
-            seen_hashes[content_hash] = {"chunk": chunk, "has_warning": has_warning}
-            unique.append(chunk)
-        else:
-            existing = seen_hashes[content_hash]
-            if existing["has_warning"] and not has_warning:
-                unique.remove(existing["chunk"])
-                seen_hashes[content_hash] = {"chunk": chunk, "has_warning": has_warning}
-                unique.append(chunk)
-
-    return unique
-
-
 class Retriever(BaseAgent):
 
     def __init__(self):
@@ -81,17 +58,17 @@ class Retriever(BaseAgent):
         raw_chunks = []
         for doc, meta, dist in zip(documents, metadatas, distances):
             similarity = 1 - dist
+            warning = self.registry.get(meta["filename"], {}).get("warning")
             raw_chunks.append({
                 "document": doc,
                 "metadata": meta,
-                "similarity": similarity
+                "similarity": similarity,
+                "warning": warning
             })
 
-        deduped_chunks = deduplicate_chunks(raw_chunks, self.registry)
-
-        top_score = deduped_chunks[0]["similarity"] if deduped_chunks else 0
-        top_match = deduped_chunks[0]["metadata"]["filename"] if deduped_chunks else "none"
-        top_section = deduped_chunks[0]["metadata"]["section_title"] if deduped_chunks else ""
+        top_score = raw_chunks[0]["similarity"] if raw_chunks else 0
+        top_match = raw_chunks[0]["metadata"]["filename"] if raw_chunks else "none"
+        top_section = raw_chunks[0]["metadata"]["section_title"] if raw_chunks else ""
 
         if top_score < SIMILARITY_THRESHOLD:
             context.is_answerable = False
@@ -99,7 +76,7 @@ class Retriever(BaseAgent):
             context.sources = []
         else:
             filtered_chunks = [
-                c for c in deduped_chunks
+                c for c in raw_chunks
                 if c["similarity"] >= SIMILARITY_THRESHOLD
             ]
 
@@ -107,6 +84,7 @@ class Retriever(BaseAgent):
             context.retrieved_chunks = filtered_chunks
             context.sources = list(dict.fromkeys([
                 f"{c['metadata']['filename']} § {c['metadata']['section_title']} ({round(c['similarity'] * 100, 1)}%)"
+                + (f" ⚠️ {c['warning']}" if c["warning"] else "")
                 for c in filtered_chunks
                 if c["similarity"] >= top_score - SOURCE_MARGIN
             ]))

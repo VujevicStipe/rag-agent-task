@@ -645,7 +645,7 @@
 
     section.style.display = 'block';
     list.innerHTML = sources.map(s => {
-      const hasWarning = s.toLowerCase().includes('wip') || s.toLowerCase().includes('warning');
+      const hasWarning = s.includes('⚠️');
       return `
         <div class="source-item">
           <svg class="source-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
