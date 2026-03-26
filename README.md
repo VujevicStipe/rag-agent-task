@@ -109,6 +109,14 @@ This is critical for documents with uninterpretable content where the title is t
 ## Running the project
 
 ### Prerequisites
+
+This project uses the Google Gemini API for both embeddings and text generation. You will need a free API key from [Google AI Studio](https://aistudio.google.com).
+
+1. Go to [aistudio.google.com](https://aistudio.google.com)
+2. Sign in with a Google account
+3. Click "Get API key" and create a new project
+4. Copy the key and add it to your `.env` file
+
 ```bash
 python -m venv venv
 venv\Scripts\activate        # Windows
@@ -123,6 +131,20 @@ GEMINI_API_KEY=your_key_here
 ### Ingestion (run once)
 ```bash
 python ingest.py
+```
+
+### CLI
+```bash
+python main.py
+```
+
+### API + Dashboard
+```bash
+# Terminal 1
+uvicorn api.server:app --reload --port 8000
+
+# Terminal 2 — open in browser
+ui/dashboard.html
 ```
 
 ### CLI
