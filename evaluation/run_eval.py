@@ -39,14 +39,17 @@ def run_evaluation():
                 "query_type": context.query_type,
                 "is_answerable": context.is_answerable,
                 "sources": context.sources,
+                "flagged_sources": context.flagged_sources,
                 "answer": context.answer,
                 "status": "OK"
             }
 
-            print(f"  Type: {context.query_type}")
+            print(f"  Type:       {context.query_type}")
             print(f"  Answerable: {context.is_answerable}")
-            print(f"  Sources: {len(context.sources)}")
-            print(f"  Answer preview: {context.answer[:100].strip()}...")
+            print(f"  Sources:    {len(context.sources)}")
+            if context.flagged_sources:
+                print(f"  Flagged:    {len(context.flagged_sources)}")
+            print(f"  Answer:     {context.answer[:100].strip()}...")
 
         except Exception as e:
             result = {
@@ -57,7 +60,7 @@ def run_evaluation():
             print(f"  ERROR: {e}")
 
         results.append(result)
-        time.sleep(3)  # izbjegavamo rate limit
+        time.sleep(3)
 
     print("\n" + "=" * 60)
     print(" SUMMARY")
@@ -66,13 +69,15 @@ def run_evaluation():
     ok = sum(1 for r in results if r["status"] == "OK")
     answerable = sum(1 for r in results if r.get("is_answerable"))
     not_found = sum(1 for r in results if r["status"] == "OK" and not r.get("is_answerable"))
+    flagged = sum(1 for r in results if r.get("flagged_sources"))
     errors = sum(1 for r in results if r["status"] == "ERROR")
 
-    print(f"  Total:      {len(results)}")
-    print(f"  OK:         {ok}")
-    print(f"  Answerable: {answerable}")
-    print(f"  Not found:  {not_found}")
-    print(f"  Errors:     {errors}")
+    print(f"  Total:        {len(results)}")
+    print(f"  OK:           {ok}")
+    print(f"  Answerable:   {answerable}")
+    print(f"  Not found:    {not_found}")
+    print(f"  With flagged: {flagged}")
+    print(f"  Errors:       {errors}")
 
     return results
 
