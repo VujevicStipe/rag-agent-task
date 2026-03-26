@@ -150,20 +150,6 @@ uvicorn api.server:app --reload --port 8000
 ui/dashboard.html
 ```
 
-### CLI
-```bash
-python main.py
-```
-
-### API + Dashboard
-```bash
-# Terminal 1
-uvicorn api.server:app --reload --port 8000
-
-# Terminal 2 — open in browser
-ui/dashboard.html
-```
-
 ---
 
 ## Project structure
