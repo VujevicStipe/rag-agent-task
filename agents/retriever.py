@@ -20,6 +20,11 @@ SOURCE_MARGIN = config["source_margin"]
 REGISTRY_PATH = config["registry_path"]
 CHROMA_PATH = config["chroma_path"]
 
+FLAGGED_MESSAGE = Path("config/prompts/flagged_document.txt").read_text(encoding="utf-8").format(
+    support_email=config.get("support_email", "support@company.com"),
+    flagged_list="(see sources above)"
+)
+
 
 def load_registry() -> dict:
     with open(REGISTRY_PATH, "r", encoding="utf-8") as f:
@@ -74,27 +79,43 @@ class Retriever(BaseAgent):
             context.is_answerable = False
             context.retrieved_chunks = []
             context.sources = []
+            context.flagged_sources = []
         else:
             filtered_chunks = [
                 c for c in raw_chunks
                 if c["similarity"] >= SIMILARITY_THRESHOLD
             ]
 
-            context.is_answerable = True
-            context.retrieved_chunks = filtered_chunks
+            context_chunks = [c for c in filtered_chunks if not c["warning"]]
+            source_chunks = [c for c in filtered_chunks if c["similarity"] >= top_score - SOURCE_MARGIN]
+
             context.sources = list(dict.fromkeys([
                 f"{c['metadata']['filename']} § {c['metadata']['section_title']} ({round(c['similarity'] * 100, 1)}%)"
-                + (f" ⚠️ {c['warning']}" if c["warning"] else "")
-                for c in filtered_chunks
-                if c["similarity"] >= top_score - SOURCE_MARGIN
+                for c in source_chunks
+                if not c["warning"]
             ]))
+
+            context.flagged_sources = list(dict.fromkeys([
+                f"{c['metadata']['filename']} § {c['metadata']['section_title']} ({round(c['similarity'] * 100, 1)}%) — {c['warning']}"
+                for c in source_chunks
+                if c["warning"]
+            ]))
+
+            if not context_chunks:
+                context.is_answerable = False
+                context.answer = FLAGGED_MESSAGE
+                context.retrieved_chunks = []
+            else:
+                context.is_answerable = True
+                context.retrieved_chunks = context_chunks
 
         self.log_step(context, {
             "total_chunks_searched": total_chunks,
             "top_match": f"{top_match} § {top_section}",
             "top_score": round(top_score, 4),
             "is_answerable": context.is_answerable,
-            "sources_found": context.sources
+            "sources_found": context.sources,
+            "flagged_found": context.flagged_sources
         })
 
         return context

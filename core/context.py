@@ -23,5 +23,6 @@ class AgentContext:
     retrieved_chunks: Optional[list] = None
     is_answerable: Optional[bool] = None
     sources: Optional[list] = None
+    flagged_sources: list = field(default_factory=list)
     answer: Optional[str] = None
     steps: list = field(default_factory=list)

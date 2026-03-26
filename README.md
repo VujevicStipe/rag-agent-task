@@ -1,120 +1,126 @@
 # Company Knowledge Assistant
 
-RAG multi-agent sustav koji odgovara na pitanja o internim dokumentima tvrtke.
+A RAG multi-agent system that answers questions about internal company documents.
 
 ---
 
-## Problemi i kako su riješeni
+## Problems and how they were solved
 
-Skup dokumenata uključuje nekoliko problematičnih fajlova koji testiraju kako sustav reagira na rubne slučajeve.
+The document set contains a few files that aren't straightforward to handle. Part of the challenge was figuring out what makes them tricky and designing the system to deal with each case correctly.
 
-### Dokumenti s besmislenim sadržajem
+### Documents with meaningless content
 
-`krzth_monkey_document.md` sadrži samo izmišljene riječi, a `symbolic_reference.md` samo simbole. Kada korisnik pita "Summarize the Krzth Monolithic Reference document", similarity search nije mogao pronaći taj dokument jer embedding izmišljenih riječi nema semantičko značenje — umjesto toga, vraćao je chunkove iz `zulmar_policy.md` koji ima sličan nonsense vokabular.
+`krzth_monkey_document.md` contains only made-up words, and `symbolic_reference.md` contains only symbols. When a user asks "Summarize the Krzth Monolithic Reference document", the similarity search could not find that document because embedding nonsense text produces vectors with no semantic meaning. Instead, it was returning chunks from `zulmar_policy.md`, which shares a similar nonsense vocabulary.
 
-Rješenje je jednostavno: pri chunkingu dodajemo `section_title` kao prefix u sadržaj svakog chunka. Naslov "Krzth Monolithic Reference" je jedini smisleni tekst u tom dokumentu i dovoljan je da similarity search pronađe pravi dokument. ResponseGenerator zatim prepoznaje da sadržaj nije interpretabilan i vraća user-friendly poruku.
+The fix was straightforward. During chunking, the `section_title` is added as a prefix to the content of each chunk. The title "Krzth Monolithic Reference" is the only meaningful text in that document, and it is enough for similarity search to find the right file. The ResponseGenerator then recognizes that the content is not interpretable and returns a user-friendly message.
 
-### Zulmar policy
+### Zulmar policy and Quantum Synergy policy
 
-`zulmar_policy.md` ima izmišljene pojmove ali validnu strukturu dokumenta. Sustav odgovara prema dokumentu i navodi source. Procjena je li sadržaj realan nije odgovornost RAG sustava — njegova jedina odgovornost je biti vjeran posrednik između korisnika i dokumenata.
+`zulmar_policy.md` uses made-up terminology and `quantum_synergy_policy.md` uses corporate buzzword language, but both have a valid document structure. The system answers based on what the documents say and cites them as sources. Whether the content is meaningful in the real world is outside the scope of a RAG system. Its only job is to be a faithful intermediary between the user and the documents.
 
-### WIP dokument
+### Duplicate documents
 
-`expense_policy_wip.md` je nepotpuna verzija s napomenom "do not use" na kraju. Pri ingestionu, document registry skenira svaki dokument za warning signale i sprema rezultat u `registry.json`. Kada retriever pronađe chunk iz flagganog dokumenta, warning se prikazuje uz source u odgovoru. Identični chunkovi između WIP i finalne verzije su deduplicirani automatski od strane ChromaDB-a po content hashu.
+`hr_onboarding.md` and `onboarding_process.md` are identical, as are `kickoff.md` and `project_kickoff.md`. All files go through ingestion and nothing is filtered manually.
 
-### Duplikati
+ChromaDB deduplicates identical chunks during ingestion using content hashing. This matters for retrieval quality. Without deduplication, the same content appearing in multiple files would receive artificially higher weight in similarity search simply because of repetition, which would skew results toward those topics for no real reason.
 
-`hr_onboarding.md` i `onboarding_process.md` su identični, kao i `kickoff.md` i `project_kickoff.md`. Svi fajlovi ulaze u ingestion — sustav ne filtrira ručno.
+### WIP document
 
-ChromaDB deduplificira identične chunkove pri ingestionu po content hashu. Ovo je važno iz perspektive kvalitete retrievala — bez deduplication, isti sadržaj koji se pojavljuje u više fajlova bi dobivao umjetno veći weight u similarity searchu samo zbog ponavljanja, što bi iskrivilo rezultate prema tim temama bez stvarnog razloga.
+`expense_policy_wip.md` is an incomplete version of the `expense_policy.md` marked with "Not finished, do not use". All documents go through ingestion without manual filtering, the system decides how to handle them.
+
+During ingestion, the document registry scans each file for warning signals and saves the result to `registry.json`. In this case the WIP shares identical content with the final version, so ChromaDB deduplicates those chunks by content hash and only the unique "do not use" chunk enters the database. This is a coincidence of alphabetical processing order, not a guaranteed behavior for all flagged documents.
+
+The key constraint is that flagged chunks never reach the LLM. The retriever excludes them from the answer generation context. If triggered, they appear in a separate "found but not used" section with a warning so the user knows the document exists and is flagged.
 
 ---
 
-## Arhitektura
+## Architecture
 
-3 agenta u jednom procesu, sekvencijalni pipeline koordiniran Orchestratorom. Odlučio sam se za jedan proces umjesto microservices arhitekture — za ovaj scope je dovoljno, a granice između agenata su čiste i mogu se razbiti na zasebne servise ako zatreba.
+Three agents in a single process, running as a sequential pipeline coordinated by the Orchestrator. A single process was chosen instead of microservices because it is sufficient for this scope. The boundaries between agents are clean and the system can be split into separate services if needed.
 
 ```
 User Query
     ↓
-[1] QueryAnalyzer   — standardizira pitanje, klasificira tip, ekstraktira search terme
+[1] QueryAnalyzer      — normalizes the question, classifies type, extracts search terms
     ↓
-[2] Retriever       — vector search u ChromaDB, threshold check, source filtering
+[2] Retriever          — vector search in ChromaDB, threshold check, source filtering
     ↓
-[3] ResponseGenerator — generira odgovor prema tipu pitanja, navodi sources
+[3] ResponseGenerator  — generates answer based on query type, cites sources
     ↓
-Odgovor + Sources + Step log
+Answer + Sources + Step log
 ```
 
 ### QueryAnalyzer
-- Standardizira pitanje — typo, neformalni jezik ili skraćenice se normaliziraju prije embedanja
-- Klasificira tip: `FACTUAL` / `PROCEDURAL` / `SUMMARIZATION`
-- Ekstraktira ključne termine za search
-- Embeda standardizirano pitanje, ne originalno
+- Normalizes the question, typos, informal language and abbreviations are cleaned up before embedding
+- Classifies query type as `FACTUAL`, `PROCEDURAL`, or `SUMMARIZATION`
+- Extracts key search terms
+- Embeds the normalized question, not the original
 
 ### Retriever
-- Embeda query istim modelom kao ingestion (`gemini-embedding-001`) — konzistentni vektorski prostor
-- Vector search u ChromaDB, top K = 7
-- Odbacuje chunkove ispod similarity thresholda 0.70
-- Prikazuje samo sources unutar 10% od top scorea
-- Čita registry i dodaje warning uz source ako je dokument flaggan
+- Embeds the query using the same model as ingestion (`gemini-embedding-001`), keeping the vector space consistent
+- Vector search in ChromaDB, top K = 7
+- Drops chunks below the similarity threshold of 0.70
+- Only shows sources within 10% of the top score
+- Flagged chunks are excluded from the LLM context and shown separately as "found but not used"
 
 ### ResponseGenerator
-- `FACTUAL` → direktan, koncizan odgovor
-- `PROCEDURAL` → checklist s checkboxima
-- `SUMMARIZATION` → strukturirani summary
-- Ako `is_answerable = False` → "Information not available"
-- Uvijek navodi sources s postotkom sličnosti
+- `FACTUAL` → direct, concise answer
+- `PROCEDURAL` → checklist with checkboxes
+- `SUMMARIZATION` → structured summary
+- If `is_answerable = False` → "Information not available"
+- Always cites sources with similarity percentage
 
 ---
 
 ## UI Dashboard
 
-Web sučelje za interakciju sa sustavom. Prikazuje agent pipeline uživo, sources s postocima sličnosti, warning za flaggane dokumente i history zadnjih pitanja. Komunicira s FastAPI serverom na portu 8000.
+A web interface for interacting with the system. It shows the agent pipeline in real time, sources with similarity scores, warnings for flagged documents, and a history of recent questions. It communicates with the FastAPI server on port 8000.
 
 ![Dashboard](./assets/task-agent-mockup.png)
 
+---
+
 ## Stack
 
-| Komponenta | Tehnologija |
+| Component | Technology |
 |---|---|
 | Embeddings | `gemini-embedding-001` |
 | LLM | `gemini-2.5-flash` |
-| Vector store | ChromaDB (lokalno) |
+| Vector store | ChromaDB (local) |
 | Backend | FastAPI |
 | UI | Vanilla HTML/CSS/JS |
 
-Isti embedding model koristi se i pri ingestionu i pri queryju. Različiti modeli stvaraju različite vektorske prostore pa similarity search ne bi radio ispravno.
+The same embedding model is used during both ingestion and querying. Using different models would create inconsistent vector spaces and break similarity search.
 
 ---
 
-## Chunking strategija
+## Chunking strategy
 
-Structure-based chunking po MD headinzima (`#`, `##`, `###`) s overlap od 3 linije između sekcija. Svaki chunk uključuje `section_title` kao prefix u sadržaj:
+Structure-based chunking by MD headings (`#`, `##`, `###`) with a 3-line overlap between sections. Each chunk includes the `section_title` as a prefix in the content:
 
 ```
 "Submission Deadline\n\nExpense claims must be submitted within 15 calendar days..."
 ```
 
-Ovo je kritično za dokumente s neinterpretabilnim sadržajem gdje je naslov jedina smislena informacija.
+This is critical for documents with uninterpretable content where the title is the only meaningful information available.
 
 ---
 
-## Pokretanje
+## Running the project
 
-### Preduvjeti
+### Prerequisites
 ```bash
 python -m venv venv
 venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 ```
 
-Kreiraj `.env` fajl:
+Create a `.env` file:
 ```
 GEMINI_API_KEY=your_key_here
 ```
 
-### Ingestion (jednom)
+### Ingestion (run once)
 ```bash
 python ingest.py
 ```
@@ -129,13 +135,13 @@ python main.py
 # Terminal 1
 uvicorn api.server:app --reload --port 8000
 
-# Terminal 2 — otvori dashboard.html u browseru
+# Terminal 2 — open in browser
 ui/dashboard.html
 ```
 
 ---
 
-## Struktura projekta
+## Project structure
 
 ```
 rag_agent/
@@ -168,9 +174,9 @@ rag_agent/
 
 ---
 
-## Konfiguracija
+## Configuration
 
-`config/retrieval.yaml` — ključne vrijednosti bez diranja koda:
+`config/retrieval.yaml` contains all key values that can be changed without touching the code:
 
 ```yaml
 similarity_threshold: 0.7
@@ -179,4 +185,4 @@ source_margin: 0.1
 support_email: support@company.com
 ```
 
-Prompts su u `config/prompts/` — mogu se mijenjati bez restarta koda.
+Prompts live in `config/prompts/` and can be edited without restarting the server.

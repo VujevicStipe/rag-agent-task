@@ -17,7 +17,7 @@ def print_results(context):
             print(f"    → {key}: {value}")
 
     print("\n" + "=" * 50)
-    print(" SOURCES")
+    print(" SOURCES USED")
     print("=" * 50)
 
     if context.sources:
@@ -25,6 +25,13 @@ def print_results(context):
             print(f"  📄 {source}")
     else:
         print("  No sources found.")
+
+    if context.flagged_sources:
+        print("\n" + "=" * 50)
+        print(" DOCUMENTS FOUND BUT NOT USED (flagged)")
+        print("=" * 50)
+        for source in context.flagged_sources:
+            print(f"  ⚠️  {source}")
 
     print("\n" + "=" * 50)
     print(" ANSWER")

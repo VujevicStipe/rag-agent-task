@@ -32,6 +32,7 @@ def query(request: QueryRequest):
         "question": request.question,
         "answer": context.answer,
         "sources": context.sources,
+        "flagged_sources": context.flagged_sources,
         "is_answerable": context.is_answerable,
         "steps": [
             {"agent": s.agent, "details": s.details}

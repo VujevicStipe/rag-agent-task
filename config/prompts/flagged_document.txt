@@ -1,0 +1,5 @@
+The following documents were found but are marked with a warning and should not be used:
+
+{flagged_list}
+
+These documents may be outdated, incomplete, or explicitly marked as unavailable. If your question is about one of these documents, the answer is that it should not be used. Please contact your manager or reach out via email at {support_email} for the correct version.

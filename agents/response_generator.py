@@ -18,20 +18,16 @@ FACTUAL_PROMPT = Path("config/prompts/response_factual.txt").read_text(encoding=
 PROCEDURAL_PROMPT = Path("config/prompts/response_procedural.txt").read_text(encoding="utf-8")
 SUMMARIZATION_PROMPT = Path("config/prompts/response_summarization.txt").read_text(encoding="utf-8")
 UNINTERPRETABLE = Path("config/prompts/uninterpretable_content.txt").read_text(encoding="utf-8").format(support_email=support_email)
+FLAGGED_DOCUMENT_TEMPLATE = Path("config/prompts/flagged_document.txt").read_text(encoding="utf-8")
 
 
-def build_context(chunks: list[dict], registry: dict) -> str:
+def build_context(chunks: list[dict]) -> str:
     parts = []
     for chunk in chunks:
         filename = chunk["metadata"]["filename"]
         section = chunk["metadata"]["section_title"]
         content = chunk["document"]
-        warning = registry.get(filename, {}).get("warning")
-
         header = f"[{filename} § {section}]"
-        if warning:
-            header += f" ⚠️ WARNING: This document is marked as '{warning}'"
-
         parts.append(f"{header}\n{content}")
 
     return "\n\n---\n\n".join(parts)
@@ -39,20 +35,25 @@ def build_context(chunks: list[dict], registry: dict) -> str:
 
 class ResponseGenerator(BaseAgent):
 
-    def __init__(self, registry: dict):
-        self.registry = registry
-
     def run(self, context: AgentContext) -> AgentContext:
         if not context.is_answerable:
-            context.answer = NOT_FOUND_MESSAGE
+            if not context.answer:
+                context.answer = NOT_FOUND_MESSAGE
             self.log_step(context, {
                 "response_type": "NOT_FOUND",
                 "sources": []
             })
             return context
 
-        doc_context = build_context(context.retrieved_chunks, self.registry)
+        doc_context = build_context(context.retrieved_chunks)
         query = context.standardized_query or context.original_query
+
+        if context.flagged_sources:
+            flagged_list = "\n".join(f"- {s}" for s in context.flagged_sources)
+            doc_context += "\n\n" + FLAGGED_DOCUMENT_TEMPLATE.format(
+                flagged_list=flagged_list,
+                support_email=support_email
+            )
 
         if context.query_type == "PROCEDURAL":
             prompt = PROCEDURAL_PROMPT.format(context=doc_context, query=query)
@@ -64,7 +65,7 @@ class ResponseGenerator(BaseAgent):
         prompt += "\n\n" + UNINTERPRETABLE
 
         response = client.models.generate_content(
-            model="models/gemini-2.5-flash-lite",
+            model="models/gemini-2.5-flash",
             contents=prompt
         )
 
@@ -72,7 +73,8 @@ class ResponseGenerator(BaseAgent):
 
         self.log_step(context, {
             "response_type": context.query_type,
-            "sources": context.sources
+            "sources": context.sources,
+            "flagged_sources": context.flagged_sources
         })
 
         return context

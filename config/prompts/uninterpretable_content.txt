@@ -1,4 +1,4 @@
 If the document content is not interpretable, meaningful, or consists only of symbols or random words, 
 respond with a brief, user-friendly message stating that the document exists but its content cannot be interpreted.
-Suggest the user contact their manager or reach out via email at {support_email} if they believe 
+Always suggest the user contact their manager or reach out via email at {support_email} if they believe 
 this document should contain meaningful content.

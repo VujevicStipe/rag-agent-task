@@ -39,7 +39,6 @@
       flex-direction: column;
     }
 
-    /* Header */
     header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
@@ -92,24 +91,20 @@
 
     .status-dot.online { background: var(--success); }
 
-    /* Main layout */
     main {
       flex: 1;
       display: grid;
       grid-template-columns: 1fr 380px;
-      gap: 0;
       max-width: 1280px;
       width: 100%;
       margin: 0 auto;
-      padding: 32px 32px 32px 32px;
+      padding: 32px;
       gap: 24px;
       align-items: start;
     }
 
-    /* Left column */
     .left-col { display: flex; flex-direction: column; gap: 20px; }
 
-    /* Ask section */
     .ask-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -203,7 +198,6 @@
 
     .example-chip:hover { background: #dbeafe; }
 
-    /* Answer card */
     .answer-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -254,7 +248,6 @@
       font-style: italic;
     }
 
-    /* Sources */
     .sources-section {
       padding: 14px 20px;
       border-top: 1px solid var(--border);
@@ -270,6 +263,11 @@
       margin-bottom: 8px;
     }
 
+    .sources-title.flagged {
+      color: var(--warning);
+      margin-top: 14px;
+    }
+
     .source-item {
       display: flex;
       align-items: center;
@@ -283,6 +281,15 @@
 
     .source-item:last-child { border-bottom: none; }
 
+    .source-item.flagged {
+      color: var(--warning);
+      background: var(--warning-bg);
+      padding: 5px 8px;
+      border-radius: var(--radius-sm);
+      border-bottom: none;
+      margin-bottom: 4px;
+    }
+
     .source-icon {
       width: 16px;
       height: 16px;
@@ -290,19 +297,13 @@
       flex-shrink: 0;
     }
 
-    .source-warning {
-      color: var(--warning);
-      font-size: 11px;
-      margin-left: auto;
-    }
+    .source-icon.flagged { color: var(--warning); }
 
-    /* Loading */
     .loading-bar {
       height: 2px;
       background: var(--border);
       border-radius: 2px;
       overflow: hidden;
-      margin-bottom: 0;
     }
 
     .loading-bar-inner {
@@ -323,7 +324,6 @@
       100% { width: 0%; margin-left: 100%; }
     }
 
-    /* Right sidebar — Steps */
     .sidebar { display: flex; flex-direction: column; gap: 16px; }
 
     .steps-card {
@@ -362,7 +362,6 @@
       transition: opacity 0.3s;
     }
 
-    .step-item.active { opacity: 1; background: var(--bg); }
     .step-item.done { opacity: 1; }
 
     .step-number {
@@ -378,12 +377,6 @@
       color: var(--text-muted);
       flex-shrink: 0;
       font-family: 'JetBrains Mono', monospace;
-      transition: all 0.2s;
-    }
-
-    .step-item.active .step-number {
-      background: var(--accent);
-      color: white;
     }
 
     .step-item.done .step-number {
@@ -413,7 +406,6 @@
 
     .step-detail strong { color: var(--text-secondary); }
 
-    /* Empty state */
     .empty-state {
       padding: 32px 20px;
       text-align: center;
@@ -424,7 +416,6 @@
       color: var(--text-muted);
     }
 
-    /* History */
     .history-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -528,8 +519,9 @@
       </div>
       <div class="answer-body" id="answerBody"></div>
       <div class="sources-section" id="sourcesSection" style="display:none">
-        <div class="sources-title">Sources</div>
+        <div class="sources-title">Sources Used</div>
         <div id="sourcesList"></div>
+        <div id="flaggedSourcesList"></div>
       </div>
     </div>
 
@@ -565,7 +557,6 @@
   const API = 'http://127.0.0.1:8000';
   let history = [];
 
-  // Check server health
   async function checkHealth() {
     try {
       const res = await fetch(`${API}/health`);
@@ -615,7 +606,7 @@
 
     body.innerHTML = steps.map((step, i) => {
       const details = Object.entries(step.details)
-        .filter(([k]) => !['sources', 'sources_found'].includes(k))
+        .filter(([k]) => !['sources', 'sources_found', 'flagged_sources', 'flagged_found'].includes(k))
         .slice(0, 4)
         .map(([k, v]) => {
           const val = Array.isArray(v) ? v.join(', ') : String(v);
@@ -634,30 +625,56 @@
     }).join('');
   }
 
-  function renderSources(sources) {
+  const docIcon = `<svg class="source-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="2" y="1" width="10" height="13" rx="1.5"/>
+    <line x1="4.5" y1="5" x2="9.5" y2="5"/>
+    <line x1="4.5" y1="7.5" x2="9.5" y2="7.5"/>
+    <line x1="4.5" y1="10" x2="7.5" y2="10"/>
+  </svg>`;
+
+  const flaggedIcon = `<svg class="source-icon flagged" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="2" y="1" width="10" height="13" rx="1.5"/>
+    <line x1="4.5" y1="5" x2="9.5" y2="5"/>
+    <line x1="4.5" y1="7.5" x2="9.5" y2="7.5"/>
+    <line x1="4.5" y1="10" x2="7.5" y2="10"/>
+  </svg>`;
+
+  function renderSources(sources, flaggedSources) {
     const section = document.getElementById('sourcesSection');
     const list = document.getElementById('sourcesList');
+    const flaggedList = document.getElementById('flaggedSourcesList');
 
-    if (!sources || sources.length === 0) {
+    const hasSources = sources && sources.length > 0;
+    const hasFlagged = flaggedSources && flaggedSources.length > 0;
+
+    if (!hasSources && !hasFlagged) {
       section.style.display = 'none';
       return;
     }
 
     section.style.display = 'block';
-    list.innerHTML = sources.map(s => {
-      const hasWarning = s.includes('⚠️');
-      return `
+
+    if (hasSources) {
+      list.innerHTML = sources.map(s => `
         <div class="source-item">
-          <svg class="source-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-            <rect x="2" y="1" width="10" height="13" rx="1.5"/>
-            <line x1="4.5" y1="5" x2="9.5" y2="5"/>
-            <line x1="4.5" y1="7.5" x2="9.5" y2="7.5"/>
-            <line x1="4.5" y1="10" x2="7.5" y2="10"/>
-          </svg>
+          ${docIcon}
           <span>${s}</span>
-          ${hasWarning ? '<span class="source-warning">⚠ draft</span>' : ''}
-        </div>`;
-    }).join('');
+        </div>`).join('');
+    } else {
+      list.innerHTML = '';
+    }
+
+    if (hasFlagged) {
+      flaggedList.innerHTML = `
+        <div class="sources-title flagged" style="margin-top:12px">⚠️ Found but not used (flagged)</div>
+        ${flaggedSources.map(s => `
+          <div class="source-item flagged">
+            ${flaggedIcon}
+            <span>${s}</span>
+          </div>`).join('')}`;
+    } else {
+      flaggedList.innerHTML = '';
+    }
   }
 
   function addToHistory(question) {
@@ -686,7 +703,6 @@
 
     setLoading(true);
 
-    // Show steps placeholder
     const stepsBody = document.getElementById('stepsBody');
     stepsBody.innerHTML = `
       ${['QueryAnalyzer', 'Retriever', 'ResponseGenerator'].map((name, i) => `
@@ -711,7 +727,6 @@
 
       const data = await res.json();
 
-      // Render answer
       const answerCard = document.getElementById('answerCard');
       const answerBody = document.getElementById('answerBody');
       const queryTypeBadge = document.getElementById('queryTypeBadge');
@@ -720,12 +735,11 @@
       answerBody.textContent = data.answer;
       answerBody.className = 'answer-body' + (!data.is_answerable ? ' not-found' : '');
 
-      // Find query type from steps
       const analyzerStep = data.steps?.find(s => s.agent === 'QueryAnalyzer');
       const queryType = analyzerStep?.details?.query_type || '';
       queryTypeBadge.textContent = queryType;
 
-      renderSources(data.sources);
+      renderSources(data.sources, data.flagged_sources);
       renderSteps(data.steps, 'done');
       addToHistory(question);
 
@@ -738,7 +752,6 @@
     setLoading(false);
   }
 
-  // Submit on Enter (Shift+Enter for newline)
   document.getElementById('queryInput').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
