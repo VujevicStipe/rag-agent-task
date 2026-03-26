@@ -91,7 +91,7 @@ A web interface for interacting with the system. It shows the agent pipeline in 
 | UI | Vanilla HTML/CSS/JS |
 
 The same embedding model is used during both ingestion and querying. Using different models would create inconsistent vector spaces and break similarity search.
-The model can be switched between `gemini-2.5-flash` and `gemini-2.5-flash-lite` in `query_analyzer.py` and `response_generator.py` depending on speed and free quota needs.
+The LLM model can be switched between `gemini-2.5-flash` and `gemini-2.5-flash-lite` in `query_analyzer.py` and `response_generator.py` depending on speed and free quota needs.
 
 ---
 
