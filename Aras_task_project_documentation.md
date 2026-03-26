@@ -261,27 +261,14 @@ project/
 8. ingestion/document_registry.py
 9. ingestion/chunker.py
 10. ingestion/embedder.py
-11. ingest.py        ← CLI za ingestion
-12. main.py          ← CLI za query
+11. ingest.py       
+12. main.py          
 13. api/server.py
 14. ui/dashboard.html
 15. evaluation/run_eval.py
 ```
 
 ---
-
-## Što reći tech leadu
-
-| Pitanje | Odgovor |
-|---|---|
-| Zašto ne microservices? | Svjesna odluka — overkill za ovaj scope, ali granice su čiste i mogu se razbiti |
-| Zašto ne event bus? | Sekvencijalni pipeline ne treba pub/sub — direktni pozivi su čitljiviji i dovoljni |
-| Zašto isti embedding model? | Različiti modeli = različiti vektorski prostori, similarity search ne radi |
-| Zašto standardizacija pitanja? | Štiti cijeli pipeline — embedding lošeg pitanja = loš retrieval |
-| Zašto nema Validator agenta? | Threshold check je jedan if uvjet — nije zaradio mjesto kao zasebni agent |
-| Zašto registry.json? | Sustav sam detektira problematične dokumente, bez hardcodinga naziva fajlova |
-| Zašto sustav odgovara na zulmar? | Sustav nije sudac istinitosti — vjeran je dokumentima, ne procjenjuje sadržaj |
-| Kako bi skalirao? | ChromaDB → Pinecone, agenti → microservices, jedan embedding model ostaje |
 
 
 ## Final output format
